@@ -279,7 +279,7 @@ class StudentManagementApp:
         self.student_name_var = tk.StringVar()
         self.student_mobile_var = tk.StringVar()
         self.student_center_name = tk.StringVar()
-        self.student_learning_type = tk.StringVar()
+        self.student_learning_type = tk.StringVar(value="علمي")  # Set default value
         self.parent_mobile_var = tk.StringVar()
         self.barcode_var = tk.StringVar()
         self.student_grade_var = tk.StringVar()  # Added "Grade" variable
@@ -295,7 +295,8 @@ class StudentManagementApp:
         self.student_center_dropdown.grid(row=2, column=1, padx=self.padx, pady=self.pady)
 
         ttk.Label(self.add_frame, text="نوع الطالب:").grid(row=3, column=0, padx=self.padx, pady=self.pady, sticky="E")
-        ttk.Entry(self.add_frame, textvariable=self.student_learning_type).grid(row=3, column=1, padx=self.padx, pady=self.pady)
+        self.student_type_dropdown = ttk.Combobox(self.add_frame, textvariable=self.student_learning_type, state="readonly", values=["علمي", "ادبي"])
+        self.student_type_dropdown.grid(row=3, column=1, padx=self.padx, pady=self.pady)
 
         ttk.Label(self.add_frame, text="رقم جوال ولي الامر:").grid(row=4, column=0, padx=self.padx, pady=self.pady, sticky="E")
         ttk.Entry(self.add_frame, textvariable=self.parent_mobile_var).grid(row=4, column=1, padx=self.padx, pady=self.pady)
@@ -539,8 +540,7 @@ class StudentManagementApp:
         self.center_name_filter['values'] = center_names
 
         # Load distinct values for Student Type (نوع الطالب)
-        cursor.execute("SELECT DISTINCT learning_type FROM students")
-        student_types = [row[0] for row in cursor.fetchall()]
+        student_types = ["علمي", "ادبي"]
         self.student_type_filter['values'] = student_types
 
         # Load distinct values for Grade (الصف)
@@ -905,7 +905,7 @@ class StudentManagementApp:
         self.student_name_var.set("")
         self.student_mobile_var.set("")
         self.student_center_name.set("")
-        self.student_learning_type.set("")
+        self.student_learning_type.set("علمي")  # Set default student type
         self.parent_mobile_var.set("")
         self.barcode_var.set("")
         self.student_grade_var.set("")  # Clear 'Grade' field
@@ -1212,6 +1212,12 @@ class StudentManagementApp:
             messagebox.showwarning("خطأ", "يرجى ملء جميع الحقول.")
             return
 
+        # Validate student type
+        learning_type = self.student_learning_type.get()
+        if learning_type not in ["علمي", "ادبي"]:
+            messagebox.showwarning("خطأ", "يرجى اختيار نوع طالب صحيح (علمي أو ادبي).")
+            return
+
         # Validate barcode uniqueness first
         barcode = self.barcode_var.get().strip()
         if barcode:
@@ -1296,6 +1302,11 @@ class StudentManagementApp:
                 learning_type = self.student_learning_type.get()
                 parent_mobile = self.parent_mobile_var.get()
                 grade = self.student_grade_var.get()  # Added 'grade'
+
+                # Validate student type
+                if learning_type not in ["علمي", "ادبي"]:
+                    messagebox.showwarning("خطأ", "يرجى اختيار نوع طالب صحيح (علمي أو ادبي).")
+                    return
 
                 # Get center_id from center_name
                 center_id = None
