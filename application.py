@@ -216,8 +216,8 @@ class StudentManagementApp:
         self.grade_filter = ttk.Combobox(filter_frame, state="normal")
         self.grade_filter.grid(row=0, column=5, padx=self.padx, pady=self.pady)
 
-        # Apply Filter Button
-        ttk.Button(filter_frame, text="تصفية", command=self.apply_filters).grid(row=0, column=6, padx=self.padx, pady=self.pady)
+        # Clear Filters Button
+        ttk.Button(filter_frame, text="مسح الفلاتر", command=self.clear_all_filters).grid(row=0, column=6, padx=self.padx, pady=self.pady)
 
         # Frame for displaying records in a table
         self.table_frame = ttk.Frame(self.student_frame, padding=(10, 10))
@@ -347,8 +347,8 @@ class StudentManagementApp:
         ttk.Checkbutton(attendance_filter_frame, text="حضور اليوم", variable=self.today_only_var, 
                        command=self.apply_attendance_filters).grid(row=0, column=4, padx=self.padx, pady=self.pady)
 
-        # Apply Filter Button for Attendance
-        ttk.Button(attendance_filter_frame, text="تصفية", command=self.apply_attendance_filters).grid(row=0, column=5, padx=self.padx, pady=self.pady)
+        # Clear Attendance Filters Button
+        ttk.Button(attendance_filter_frame, text="مسح الفلاتر", command=self.clear_attendance_filters).grid(row=0, column=5, padx=self.padx, pady=self.pady)
 
         # Barcode search frame
         barcode_frame = ttk.Frame(self.attendance_frame, padding=(10, 10))
@@ -556,6 +556,20 @@ class StudentManagementApp:
         self.reporting_center_filter['values'] = center_names
         self.reporting_type_filter['values'] = student_types
 
+        # Bind change events to filters for automatic filtering
+        self.center_name_filter.bind("<<ComboboxSelected>>", lambda e: self.apply_filters())
+        self.student_type_filter.bind("<<ComboboxSelected>>", lambda e: self.apply_filters())
+        self.grade_filter.bind("<<ComboboxSelected>>", lambda e: self.apply_filters())
+        
+        # Bind attendance filter change events
+        self.attendance_center_filter.bind("<<ComboboxSelected>>", lambda e: self.apply_attendance_filters())
+        self.attendance_type_filter.bind("<<ComboboxSelected>>", lambda e: self.apply_attendance_filters())
+        
+        # Add clear filter functionality
+        self.center_name_filter.bind("<KeyRelease>", self.on_filter_change)
+        self.student_type_filter.bind("<KeyRelease>", self.on_filter_change)
+        self.grade_filter.bind("<KeyRelease>", self.on_filter_change)
+
         conn.close()
 
     def paste_clipboard(self, event):
@@ -578,6 +592,27 @@ class StudentManagementApp:
 
     def apply_filters(self):
         self.load_students()
+        
+    def on_filter_change(self, event=None):
+        """Handle filter changes for real-time filtering"""
+        # Clear the filter if user types something
+        widget = event.widget
+        if hasattr(widget, 'get') and widget.get() == "":
+            self.apply_filters()
+            
+    def clear_all_filters(self):
+        """Clear all filters and show all students"""
+        self.center_name_filter.set("")
+        self.student_type_filter.set("")
+        self.grade_filter.set("")
+        self.apply_filters()
+        
+    def clear_attendance_filters(self):
+        """Clear all attendance filters and show all attendance"""
+        self.attendance_center_filter.set("")
+        self.attendance_type_filter.set("")
+        self.today_only_var.set(True)
+        self.apply_attendance_filters()
 
     def load_students(self):
         # Clear the existing data
@@ -682,7 +717,7 @@ class StudentManagementApp:
         center_filter = self.attendance_center_filter.get() if hasattr(self, 'attendance_center_filter') else ""
         type_filter = self.attendance_type_filter.get() if hasattr(self, 'attendance_type_filter') else ""
 
-        # Build base query for total students
+        # Build base query for total students (filtered by current selections)
         total_query = """SELECT COUNT(DISTINCT students.id)
                         FROM students
                         LEFT JOIN centers ON students.center_id = centers.id"""
@@ -704,7 +739,7 @@ class StudentManagementApp:
         cursor.execute(total_query, total_parameters)
         total_students = cursor.fetchone()[0]
 
-        # Build query for present students (attendance today)
+        # Build query for present students (attendance today) with same filters
         today = datetime.datetime.now().strftime("%Y-%m-%d")
         present_query = """SELECT COUNT(DISTINCT students.id)
                           FROM attendance
@@ -725,10 +760,19 @@ class StudentManagementApp:
         cursor.execute(present_query, present_parameters)
         present_students = cursor.fetchone()[0]
 
+        # Get total unfiltered count for comparison if filters are applied
+        total_unfiltered = 0
+        if center_filter or type_filter:
+            cursor.execute("SELECT COUNT(DISTINCT students.id) FROM students")
+            total_unfiltered = cursor.fetchone()[0]
+
         conn.close()
 
-        # Update the labels
-        self.total_students_var.set(f"اجمالي عدد الطلاب: {total_students}")
+        # Update the labels with filtered counts
+        if center_filter or type_filter:
+            self.total_students_var.set(f"اجمالي عدد الطلاب (مفلتر): {total_students} / {total_unfiltered}")
+        else:
+            self.total_students_var.set(f"اجمالي عدد الطلاب: {total_students}")
         self.present_students_var.set(f"عدد الطلاب الحاضرين اليوم: {present_students}")
 
     def add_attendance(self):
