@@ -428,6 +428,11 @@ class StudentManagementApp:
         self.present_students_label = ttk.Label(stats_frame, textvariable=self.present_students_var, font=("Helvetica", 12, "bold"))
         self.present_students_label.pack(side="left", padx=self.padx)
 
+        # Absent students label
+        self.absent_students_var = tk.StringVar(value="عدد الغائبين: 0")
+        self.absent_students_label = ttk.Label(stats_frame, textvariable=self.absent_students_var, font=("Helvetica", 12, "bold"))
+        self.absent_students_label.pack(side="left", padx=self.padx)
+
         # Load attendance data from the database
         self.load_attendance()
         self.update_attendance_statistics()
@@ -768,12 +773,16 @@ class StudentManagementApp:
 
         conn.close()
 
+        # Calculate absent students (total filtered - present)
+        absent_students = total_students - present_students
+
         # Update the labels with filtered counts
         if center_filter or type_filter:
             self.total_students_var.set(f"اجمالي عدد الطلاب (مفلتر): {total_students} / {total_unfiltered}")
         else:
             self.total_students_var.set(f"اجمالي عدد الطلاب: {total_students}")
         self.present_students_var.set(f"عدد الطلاب الحاضرين اليوم: {present_students}")
+        self.absent_students_var.set(f"عدد الغائبين: {absent_students}")
 
     def add_attendance(self):
         barcode = self.search_barcode_var.get()
