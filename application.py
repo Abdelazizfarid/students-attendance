@@ -414,6 +414,9 @@ class StudentManagementApp:
         # Add delete button for attendance
         ttk.Button(attendance_btn_frame, text="حذف المحدد", command=self.delete_attendance).pack(side="left", padx=self.padx)
 
+        # Add show absent students button
+        ttk.Button(attendance_btn_frame, text="عرض قائمة الغائبين", command=self.show_absent_students_wizard).pack(side="left", padx=self.padx)
+
         # Statistics frame for attendance
         stats_frame = ttk.Frame(self.attendance_frame, padding=(10, 10))
         stats_frame.pack(fill="x")
@@ -1475,6 +1478,201 @@ class StudentManagementApp:
                 self.update_attendance_statistics()
         else:
             messagebox.showwarning("تحديد سجل", "يرجى تحديد سجل لحذفه.")
+
+    def show_absent_students_wizard(self):
+        """Show popup wizard for searching absent students"""
+        AbsentStudentsWizard(self.root, self)
+
+
+class AbsentStudentsWizard(tk.Toplevel):
+    def __init__(self, parent, main_app):
+        super().__init__(parent)
+        self.main_app = main_app
+        self.title("عرض قائمة الغائبين")
+        self.geometry("800x600")
+        self.resizable(True, True)
+        
+        # Center the window
+        self.transient(parent)
+        self.grab_set()
+        
+        # Create the wizard interface
+        self.create_widgets()
+        
+    def create_widgets(self):
+        # Search frame
+        search_frame = ttk.Frame(self, padding=(10, 10))
+        search_frame.pack(fill="x", padx=10, pady=10)
+        
+        # Name search
+        ttk.Label(search_frame, text="البحث بالاسم:").grid(row=0, column=0, padx=5, pady=5, sticky="E")
+        self.name_search_var = tk.StringVar()
+        self.name_search_entry = ttk.Entry(search_frame, textvariable=self.name_search_var, width=30)
+        self.name_search_entry.grid(row=0, column=1, padx=5, pady=5, sticky="W")
+        
+        # Date filter
+        ttk.Label(search_frame, text="التصفية حسب التاريخ:").grid(row=0, column=2, padx=5, pady=5, sticky="E")
+        self.date_filter_var = tk.StringVar()
+        self.date_filter_entry = ttk.Entry(search_frame, textvariable=self.date_filter_var, width=15)
+        self.date_filter_entry.grid(row=0, column=3, padx=5, pady=5, sticky="W")
+        self.date_filter_entry.insert(0, datetime.datetime.now().strftime("%Y-%m-%d"))
+        
+        # Search button
+        ttk.Button(search_frame, text="بحث", command=self.search_absent_students).grid(row=0, column=4, padx=5, pady=5)
+        
+        # Clear button
+        ttk.Button(search_frame, text="مسح", command=self.clear_search).grid(row=0, column=5, padx=5, pady=5)
+        
+        # Results frame
+        results_frame = ttk.Frame(self, padding=(10, 10))
+        results_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Results label
+        self.results_label = ttk.Label(results_frame, text="نتائج البحث:", font=("Helvetica", 12, "bold"))
+        self.results_label.pack(anchor="w", pady=(0, 10))
+        
+        # Treeview for results
+        tree_frame = ttk.Frame(results_frame)
+        tree_frame.pack(fill="both", expand=True)
+        
+        # Scrollbars
+        self.tree_scroll_y = ttk.Scrollbar(tree_frame, orient="vertical")
+        self.tree_scroll_x = ttk.Scrollbar(tree_frame, orient="horizontal")
+        
+        # Treeview
+        self.results_tree = ttk.Treeview(tree_frame, columns=("الاسم", "رقم الجوال", "اسم السنتر", "نوع الطالب", "رقم جوال ولي الامر", "الصف"), 
+                                       show='headings', yscrollcommand=self.tree_scroll_y.set, xscrollcommand=self.tree_scroll_x.set)
+        
+        self.tree_scroll_y.config(command=self.results_tree.yview)
+        self.tree_scroll_x.config(command=self.results_tree.xview)
+        
+        self.tree_scroll_y.pack(side="right", fill="y")
+        self.tree_scroll_x.pack(side="bottom", fill="x")
+        
+        # Configure columns
+        self.results_tree.heading("الاسم", text="الاسم", anchor="center")
+        self.results_tree.heading("رقم الجوال", text="رقم الجوال", anchor="center")
+        self.results_tree.heading("اسم السنتر", text="اسم السنتر", anchor="center")
+        self.results_tree.heading("نوع الطالب", text="نوع الطالب", anchor="center")
+        self.results_tree.heading("رقم جوال ولي الامر", text="رقم جوال ولي الامر", anchor="center")
+        self.results_tree.heading("الصف", text="الصف", anchor="center")
+        
+        self.results_tree.column("الاسم", anchor="center", width=150)
+        self.results_tree.column("رقم الجوال", anchor="center", width=120)
+        self.results_tree.column("اسم السنتر", anchor="center", width=150)
+        self.results_tree.column("نوع الطالب", anchor="center", width=100)
+        self.results_tree.column("رقم جوال ولي الامر", anchor="center", width=120)
+        self.results_tree.column("الصف", anchor="center", width=100)
+        
+        self.results_tree.pack(fill="both", expand=True)
+        
+        # Status bar
+        self.status_var = tk.StringVar(value="جاهز للبحث")
+        self.status_label = ttk.Label(self, textvariable=self.status_var, relief="sunken", anchor="w")
+        self.status_label.pack(side="bottom", fill="x")
+        
+        # Bind Enter key to search
+        self.name_search_entry.bind("<Return>", lambda e: self.search_absent_students())
+        self.date_filter_entry.bind("<Return>", lambda e: self.search_absent_students())
+        
+        # Focus on name search
+        self.name_search_entry.focus()
+        
+    def search_absent_students(self):
+        """Search for absent students based on filters"""
+        name_search = self.name_search_var.get().strip()
+        date_filter = self.date_filter_var.get().strip()
+        
+        if not date_filter:
+            messagebox.showwarning("خطأ", "يرجى إدخال تاريخ للبحث")
+            return
+            
+        try:
+            # Validate date format
+            datetime.datetime.strptime(date_filter, "%Y-%m-%d")
+        except ValueError:
+            messagebox.showerror("خطأ", "صيغة التاريخ غير صحيحة. استخدم YYYY-MM-DD")
+            return
+        
+        # Clear previous results
+        for item in self.results_tree.get_children():
+            self.results_tree.delete(item)
+        
+        self.status_var.set("جاري البحث...")
+        self.update()
+        
+        try:
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            
+            # Build query to find absent students
+            query = """
+                SELECT DISTINCT 
+                    students.name, 
+                    students.mobile, 
+                    centers.name as center_name, 
+                    students.learning_type, 
+                    students.parent_mobile, 
+                    students.grade
+                FROM students
+                LEFT JOIN centers ON students.center_id = centers.id
+                WHERE students.id NOT IN (
+                    SELECT DISTINCT student_id 
+                    FROM attendance 
+                    WHERE date = ?
+                )
+            """
+            parameters = [date_filter]
+            
+            # Add name filter if provided
+            if name_search:
+                query += " AND students.name LIKE ?"
+                parameters.append(f"%{name_search}%")
+            
+            # Add current attendance filters if they exist
+            if hasattr(self.main_app, 'attendance_center_filter') and self.main_app.attendance_center_filter.get():
+                query += " AND centers.name = ?"
+                parameters.append(self.main_app.attendance_center_filter.get())
+                
+            if hasattr(self.main_app, 'attendance_type_filter') and self.main_app.attendance_type_filter.get():
+                query += " AND students.learning_type = ?"
+                parameters.append(self.main_app.attendance_type_filter.get())
+            
+            query += " ORDER BY students.name"
+            
+            cursor.execute(query, parameters)
+            rows = cursor.fetchall()
+            
+            # Insert results
+            for row in rows:
+                self.results_tree.insert("", tk.END, values=row)
+            
+            # Update status
+            if rows:
+                self.status_var.set(f"تم العثور على {len(rows)} طالب غائب")
+                self.results_label.config(text=f"نتائج البحث: {len(rows)} طالب غائب")
+            else:
+                self.status_var.set("لم يتم العثور على نتائج")
+                self.results_label.config(text="نتائج البحث: لا توجد نتائج")
+            
+            conn.close()
+            
+        except Exception as e:
+            messagebox.showerror("خطأ", f"حدث خطأ أثناء البحث: {str(e)}")
+            self.status_var.set("حدث خطأ أثناء البحث")
+            conn.close()
+    
+    def clear_search(self):
+        """Clear search fields and results"""
+        self.name_search_var.set("")
+        self.date_filter_var.set(datetime.datetime.now().strftime("%Y-%m-%d"))
+        
+        for item in self.results_tree.get_children():
+            self.results_tree.delete(item)
+            
+        self.results_label.config(text="نتائج البحث:")
+        self.status_var.set("تم مسح البحث")
+        self.name_search_entry.focus()
 
 
 def get_serial_number():
