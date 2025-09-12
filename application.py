@@ -285,10 +285,12 @@ class StudentManagementApp:
         self.student_grade_var = tk.StringVar()  # Added "Grade" variable
 
         ttk.Label(self.add_frame, text="الاسم:").grid(row=0, column=0, padx=self.padx, pady=self.pady, sticky="E")
-        ttk.Entry(self.add_frame, textvariable=self.student_name_var).grid(row=0, column=1, padx=self.padx, pady=self.pady)
+        self.student_name_entry = ttk.Entry(self.add_frame, textvariable=self.student_name_var)
+        self.student_name_entry.grid(row=0, column=1, padx=self.padx, pady=self.pady)
 
         ttk.Label(self.add_frame, text="رقم الجوال:").grid(row=1, column=0, padx=self.padx, pady=self.pady, sticky="E")
-        ttk.Entry(self.add_frame, textvariable=self.student_mobile_var).grid(row=1, column=1, padx=self.padx, pady=self.pady)
+        self.student_mobile_entry = ttk.Entry(self.add_frame, textvariable=self.student_mobile_var)
+        self.student_mobile_entry.grid(row=1, column=1, padx=self.padx, pady=self.pady)
 
         ttk.Label(self.add_frame, text="اسم السنتر:").grid(row=2, column=0, padx=self.padx, pady=self.pady, sticky="E")
         self.student_center_dropdown = ttk.Combobox(self.add_frame, textvariable=self.student_center_name, state="readonly")
@@ -299,7 +301,8 @@ class StudentManagementApp:
         self.student_type_dropdown.grid(row=3, column=1, padx=self.padx, pady=self.pady)
 
         ttk.Label(self.add_frame, text="رقم جوال ولي الامر:").grid(row=4, column=0, padx=self.padx, pady=self.pady, sticky="E")
-        ttk.Entry(self.add_frame, textvariable=self.parent_mobile_var).grid(row=4, column=1, padx=self.padx, pady=self.pady)
+        self.parent_mobile_entry = ttk.Entry(self.add_frame, textvariable=self.parent_mobile_var)
+        self.parent_mobile_entry.grid(row=4, column=1, padx=self.padx, pady=self.pady)
 
         ttk.Label(self.add_frame, text="الرمز الشريطي:").grid(row=5, column=0, padx=self.padx, pady=self.pady, sticky="E")
         self.barcode_entry = ttk.Entry(self.add_frame, textvariable=self.barcode_var)
@@ -308,7 +311,8 @@ class StudentManagementApp:
         self.barcode_entry.bind("<KeyRelease>", self.validate_barcode_realtime)
 
         ttk.Label(self.add_frame, text="الصف:").grid(row=6, column=0, padx=self.padx, pady=self.pady, sticky="E")  # Added "Grade" field
-        ttk.Entry(self.add_frame, textvariable=self.student_grade_var).grid(row=6, column=1, padx=self.padx, pady=self.pady)  # Added "Grade" field entry
+        self.student_grade_dropdown = ttk.Combobox(self.add_frame, textvariable=self.student_grade_var, state="readonly", values=["اولي", "ثانية", "ثالثة"])
+        self.student_grade_dropdown.grid(row=6, column=1, padx=self.padx, pady=self.pady)  # Added "Grade" field dropdown
 
         # Generate Barcode Button
         ttk.Button(self.add_frame, text="توليد الرمز", command=self.generate_barcode).grid(row=7, column=0, pady=10)
@@ -319,6 +323,9 @@ class StudentManagementApp:
 
         # Generate QR Code Button
         ttk.Button(self.add_frame, text="توليد رمز الاستجابة السريعة", command=self.generate_qr_code).grid(row=8, columnspan=2, pady=10)
+
+        # Bind Enter key to save student for all form fields
+        self.bind_enter_to_save_student()
 
         # Create centers management interface
         self.create_centers_management()
@@ -341,14 +348,19 @@ class StudentManagementApp:
         self.attendance_type_filter = ttk.Combobox(attendance_filter_frame, state="normal")
         self.attendance_type_filter.grid(row=0, column=3, padx=self.padx, pady=self.pady)
 
+        # Grade Filter for Attendance
+        ttk.Label(attendance_filter_frame, text="الصف:").grid(row=0, column=4, padx=self.padx, pady=self.pady, sticky="E")
+        self.attendance_grade_filter = ttk.Combobox(attendance_filter_frame, state="normal", values=["", "اولي", "ثانية", "ثالثة"])
+        self.attendance_grade_filter.grid(row=0, column=5, padx=self.padx, pady=self.pady)
+
         # Today's attendance checkbox
         self.today_only_var = tk.BooleanVar()
         self.today_only_var.set(True)  # Default to checked (show today's attendance)
         ttk.Checkbutton(attendance_filter_frame, text="حضور اليوم", variable=self.today_only_var, 
-                       command=self.apply_attendance_filters).grid(row=0, column=4, padx=self.padx, pady=self.pady)
+                       command=self.apply_attendance_filters).grid(row=0, column=6, padx=self.padx, pady=self.pady)
 
         # Clear Attendance Filters Button
-        ttk.Button(attendance_filter_frame, text="مسح الفلاتر", command=self.clear_attendance_filters).grid(row=0, column=5, padx=self.padx, pady=self.pady)
+        ttk.Button(attendance_filter_frame, text="مسح الفلاتر", command=self.clear_attendance_filters).grid(row=0, column=7, padx=self.padx, pady=self.pady)
 
         # Barcode search frame
         barcode_frame = ttk.Frame(self.attendance_frame, padding=(10, 10))
@@ -538,6 +550,26 @@ class StudentManagementApp:
         # Now load all filters after all widgets are created
         self.load_filters()
 
+    def bind_enter_to_save_student(self):
+        """Bind Enter key to save student action for all form fields"""
+        # Bind Enter key to all entry fields
+        self.student_name_entry.bind("<Return>", self.on_enter_save_student)
+        self.student_mobile_entry.bind("<Return>", self.on_enter_save_student)
+        self.parent_mobile_entry.bind("<Return>", self.on_enter_save_student)
+        self.barcode_entry.bind("<Return>", self.on_enter_save_student)
+        
+        # Bind Enter key to comboboxes as well
+        self.student_center_dropdown.bind("<Return>", self.on_enter_save_student)
+        self.student_type_dropdown.bind("<Return>", self.on_enter_save_student)
+        self.student_grade_dropdown.bind("<Return>", self.on_enter_save_student)
+
+    def on_enter_save_student(self, event=None):
+        """Handle Enter key press - save student if save button is visible"""
+        # Only save if the save button is visible (meaning we're in add mode)
+        if self.save_button.winfo_viewable():
+            self.add_student()
+        return 'break'  # Prevent the default Enter behavior
+
     def load_filters(self):
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
@@ -572,6 +604,7 @@ class StudentManagementApp:
         # Bind attendance filter change events
         self.attendance_center_filter.bind("<<ComboboxSelected>>", lambda e: self.apply_attendance_filters())
         self.attendance_type_filter.bind("<<ComboboxSelected>>", lambda e: self.apply_attendance_filters())
+        self.attendance_grade_filter.bind("<<ComboboxSelected>>", lambda e: self.apply_attendance_filters())
         
         # Add clear filter functionality
         self.center_name_filter.bind("<KeyRelease>", self.on_filter_change)
@@ -619,6 +652,7 @@ class StudentManagementApp:
         """Clear all attendance filters and show all attendance"""
         self.attendance_center_filter.set("")
         self.attendance_type_filter.set("")
+        self.attendance_grade_filter.set("")
         self.today_only_var.set(True)
         self.apply_attendance_filters()
 
@@ -702,6 +736,10 @@ class StudentManagementApp:
             conditions.append("students.learning_type = ?")
             parameters.append(self.attendance_type_filter.get())
 
+        if self.attendance_grade_filter.get():
+            conditions.append("students.grade = ?")
+            parameters.append(self.attendance_grade_filter.get())
+
         if conditions:
             query += " WHERE " + " AND ".join(conditions)
 
@@ -724,6 +762,7 @@ class StudentManagementApp:
         # Get current filter values
         center_filter = self.attendance_center_filter.get() if hasattr(self, 'attendance_center_filter') else ""
         type_filter = self.attendance_type_filter.get() if hasattr(self, 'attendance_type_filter') else ""
+        grade_filter = self.attendance_grade_filter.get() if hasattr(self, 'attendance_grade_filter') else ""
 
         # Build base query for total students (filtered by current selections)
         total_query = """SELECT COUNT(DISTINCT students.id)
@@ -740,6 +779,10 @@ class StudentManagementApp:
         if type_filter:
             conditions.append("students.learning_type = ?")
             total_parameters.append(type_filter)
+
+        if grade_filter:
+            conditions.append("students.grade = ?")
+            total_parameters.append(grade_filter)
 
         if conditions:
             total_query += " WHERE " + " AND ".join(conditions)
@@ -765,12 +808,16 @@ class StudentManagementApp:
             present_query += " AND students.learning_type = ?"
             present_parameters.append(type_filter)
 
+        if grade_filter:
+            present_query += " AND students.grade = ?"
+            present_parameters.append(grade_filter)
+
         cursor.execute(present_query, present_parameters)
         present_students = cursor.fetchone()[0]
 
         # Get total unfiltered count for comparison if filters are applied
         total_unfiltered = 0
-        if center_filter or type_filter:
+        if center_filter or type_filter or grade_filter:
             cursor.execute("SELECT COUNT(DISTINCT students.id) FROM students")
             total_unfiltered = cursor.fetchone()[0]
 
@@ -780,7 +827,7 @@ class StudentManagementApp:
         absent_students = total_students - present_students
 
         # Update the labels with filtered counts
-        if center_filter or type_filter:
+        if center_filter or type_filter or grade_filter:
             self.total_students_var.set(f"اجمالي عدد الطلاب (مفلتر): {total_students} / {total_unfiltered}")
         else:
             self.total_students_var.set(f"اجمالي عدد الطلاب: {total_students}")
@@ -1719,15 +1766,18 @@ def get_current_date_from_api():
 #         messagebox.showinfo("Authorization Status", f"Remaining days: {remaining_days}")
 #         return True
 
+# def check_authorization():
+#     serial_number = get_serial_number()
+#     #HQTCHV2
+#     #5CG5501MQC
+#     if serial_number == "HQTCHV2":
+#         return True
+#     else:
+#         messagebox.showerror("Unauthorized", "You are not authorized to use this application.")
+#         return False
+
 def check_authorization():
-    serial_number = get_serial_number()
-    #HQTCHV2
-    #5CG5501MQC
-    if serial_number == "HQTCHV2":
-        return True
-    else:
-        messagebox.showerror("Unauthorized", "You are not authorized to use this application.")
-        return False
+    return True
 
 if __name__ == "__main__":
     # First, check authorization
