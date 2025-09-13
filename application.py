@@ -193,12 +193,43 @@ class StudentManagementApp:
         self.student_frame = ttk.Frame(self.notebook, padding=(10, 10))
         self.notebook.add(self.student_frame, text="إدارة الطلاب")
 
+        # Create a canvas and scrollbar for the student management page
+        self.student_canvas = tk.Canvas(self.student_frame, highlightthickness=0)
+        self.student_scrollbar = ttk.Scrollbar(self.student_frame, orient="vertical", command=self.student_canvas.yview)
+        self.student_scrollable_frame = ttk.Frame(self.student_canvas)
+
+        # Configure the scrollable frame
+        self.student_scrollable_frame.bind(
+            "<Configure>",
+            lambda e: self.student_canvas.configure(scrollregion=self.student_canvas.bbox("all"))
+        )
+
+        # Create window in canvas
+        self.student_canvas.create_window((0, 0), window=self.student_scrollable_frame, anchor="nw")
+        self.student_canvas.configure(yscrollcommand=self.student_scrollbar.set)
+
+        # Pack canvas and scrollbar
+        self.student_canvas.pack(side="left", fill="both", expand=True)
+        self.student_scrollbar.pack(side="right", fill="y")
+
+        # Bind mouse wheel to canvas for both Windows and Linux
+        self.student_canvas.bind("<MouseWheel>", self._on_student_mousewheel)  # Windows
+        self.student_canvas.bind("<Button-4>", self._on_student_mousewheel)    # Linux scroll up
+        self.student_canvas.bind("<Button-5>", self._on_student_mousewheel)    # Linux scroll down
+        
+        # Make canvas focusable and bind keyboard scrolling
+        self.student_canvas.focus_set()
+        self.student_canvas.bind("<Up>", lambda e: self.student_canvas.yview_scroll(-1, "units"))
+        self.student_canvas.bind("<Down>", lambda e: self.student_canvas.yview_scroll(1, "units"))
+        self.student_canvas.bind("<Prior>", lambda e: self.student_canvas.yview_scroll(-1, "pages"))  # Page Up
+        self.student_canvas.bind("<Next>", lambda e: self.student_canvas.yview_scroll(1, "pages"))   # Page Down
+
         # Page 2: Center Management
         self.center_frame = ttk.Frame(self.notebook, padding=(10, 10))
         self.notebook.add(self.center_frame, text="إدارة السنتر")
 
         # Filter frame for searchable dropdowns
-        filter_frame = ttk.Frame(self.student_frame, padding=(10, 10))
+        filter_frame = ttk.Frame(self.student_scrollable_frame, padding=(10, 10))
         filter_frame.pack(fill="x")
 
         # Center Name Filter (اسم السنتر)
@@ -220,7 +251,7 @@ class StudentManagementApp:
         ttk.Button(filter_frame, text="مسح الفلاتر", command=self.clear_all_filters).grid(row=0, column=6, padx=self.padx, pady=self.pady)
 
         # Frame for displaying records in a table
-        self.table_frame = ttk.Frame(self.student_frame, padding=(10, 10))
+        self.table_frame = ttk.Frame(self.student_scrollable_frame, padding=(10, 10))
         self.table_frame.pack(fill="both", expand=True)
 
         # Add scrollbars
@@ -272,7 +303,7 @@ class StudentManagementApp:
         self.delete_button.pack(side="left", padx=self.padx)
 
         # Frame for adding/updating a student
-        self.add_frame = ttk.Frame(self.student_frame, padding=(10, 10))
+        self.add_frame = ttk.Frame(self.student_scrollable_frame, padding=(10, 10))
         self.add_frame.pack(fill="x", pady=10)
 
         # Initialize StringVar variables
@@ -549,6 +580,19 @@ class StudentManagementApp:
 
         # Now load all filters after all widgets are created
         self.load_filters()
+
+    def _on_student_mousewheel(self, event):
+        """Handle mouse wheel scrolling for the student management page"""
+        # Handle different platforms (Windows vs Linux)
+        if event.delta:
+            # Windows
+            self.student_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        else:
+            # Linux
+            if event.num == 4:
+                self.student_canvas.yview_scroll(-1, "units")
+            elif event.num == 5:
+                self.student_canvas.yview_scroll(1, "units")
 
     def bind_enter_to_save_student(self):
         """Bind Enter key to save student action for all form fields"""

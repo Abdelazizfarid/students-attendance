@@ -1,0 +1,4 @@
+qrcode[pil]
+fpdf2
+Pillow
+requests
